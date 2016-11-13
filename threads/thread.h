@@ -25,6 +25,11 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+#define NICE_MAX 20
+#define NICE_DEFAULT 0
+#define NICE_MIN -20
+
+#define FP (1 << 14)
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -98,6 +103,14 @@ struct thread
     /* Sleep list elem */
     struct list_elem sleepElem;
 
+    int base_priority;
+    struct list lock_list;
+    bool donated;
+    struct lock *blocking;
+
+    int nice_val;
+    int recent_cpu;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -135,6 +148,17 @@ void thread_yield (void);
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
+void thread_yield_head(struct thread *cur);
+void sort_threads(struct list *l);
+void thread_update_avg(void);
+void current_thread_update_recent_cpu(void);
+void thread_update_recent_cpu(struct thread *curr);
+void thread_update_all_recent_cpu(void);
+
+void thread_update_priority(struct thread *curr);
+void current_thread_update_priority(void);
+void thread_update_all_priority(void);
+
 int thread_get_priority (void);
 void thread_set_priority (int);
 int thread_get_nice (void);
@@ -146,4 +170,15 @@ bool thread_priority_more_sleep(struct list_elem *a, struct list_elem *b, void *
 bool thread_priority_more_ready(struct list_elem *a, struct list_elem *b, void *aux UNUSED);
 bool thread_priority_more_all(struct list_elem *a, struct list_elem *b, void *aux UNUSED);
 
+int int_to_fixed(int d);
+int fixed_to_int(int a);
+int fixed_to_int_rounded(int a);
+// int add_fixed(int a, int b);
+int add_mixed(int a, int d);
+// int sub_fixed(int a, int b);
+int sub_mixed(int a, int d);
+int mult_fixed(int a, int b);
+// int mult_mixed(int a, int d);
+int div_fixed(int a, int b);
+// int div_mixed(int a, int d);
 #endif /* threads/thread.h */
