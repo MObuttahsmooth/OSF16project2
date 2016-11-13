@@ -96,9 +96,6 @@ timer_sleep (int64_t ticks)
 
   ASSERT (intr_get_level () == INTR_ON);
   thread_current()->wakeTime = start + ticks;
-  /*printf("%d\n", thread_current()->wakeTime);*/
-  /*while (timer_elapsed (start) < ticks) 
-    thread_yield ();*/
   thread_sleep();
 }
 
