@@ -24,6 +24,9 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* List of processes currently sleeping because of timer_sleep. */
+static struct list sleeping_list;
+
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -92,6 +95,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init(&sleeping_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -313,6 +317,81 @@ thread_yield (void)
   schedule ();
   intr_set_level (old_level);
 }
+
+/* Puts thread to sleep and schedules another thread */
+void
+thread_sleep(void){
+  struct thread *cur = thread_current();
+
+  enum intr_level old_level;
+  
+  ASSERT (!intr_context ());
+
+  old_level = intr_disable ();
+
+  list_insert_ordered(&sleeping_list, &cur->sleepElem, &thread_priority_more_sleep, NULL);
+  cur->status = THREAD_SLEEPING;
+  schedule();
+  intr_set_level (old_level);
+}
+
+/* Wakes up sleeping threads */
+void
+thread_alarm(int64_t globalTickCount){
+  struct list_elem *e;
+  struct thread *f;
+  /*int woked = 0;*/
+
+
+  for (e = list_begin (&sleeping_list); e != list_end (&sleeping_list);e = list_next (e)){
+    f = list_entry (e, struct thread, sleepElem);
+    if(f->wakeTime == globalTickCount){
+      /*printf("tick count: %d\n", globalTickCount);*/
+      ASSERT (f->status == THREAD_SLEEPING);
+      list_insert_ordered (&ready_list, &f->elem, &thread_priority_more_ready, NULL);
+      list_remove(&f->sleepElem);
+      f->status = THREAD_READY;
+      /*woked = 1;*/
+    }      
+  }
+
+  /*if(woked == 1){
+    list_sort(&ready_list, &thread_priority_more_ready, NULL);
+    e = list_front(&ready_list);
+    f = list_entry(e, struct thread, elem);
+    printf("After removal: %d\n", list_size(&sleeping_list));
+    printf("Priority of first element: %d\n", f->priority);
+  }*/
+}
+
+bool
+thread_priority_more_sleep(struct list_elem *a, struct list_elem *b, void *aux UNUSED){
+  struct thread *threadA = list_entry(a, struct thread, sleepElem);
+  struct thread *threadB = list_entry(b, struct thread, sleepElem);
+  /*printf("a priority: %d\n", threadA->priority);
+  printf("b priority: %d\n", threadB->priority);*/
+  return threadA->priority >= threadB->priority;
+}
+
+bool
+thread_priority_more_ready(struct list_elem *a, struct list_elem *b, void *aux UNUSED){
+  struct thread *threadA = list_entry(a, struct thread, elem);
+  struct thread *threadB = list_entry(b, struct thread, elem);
+  /*printf("a priority: %d\n", threadA->priority);
+  printf("b priority: %d\n", threadB->priority);*/
+  return threadA->priority >= threadB->priority;
+}
+
+bool
+thread_priority_more_all(struct list_elem *a, struct list_elem *b, void *aux UNUSED){
+  struct thread *threadA = list_entry(a, struct thread, allelem);
+  struct thread *threadB = list_entry(b, struct thread, allelem);
+  /*printf("a priority: %d\n", threadA->priority);
+  printf("b priority: %d\n", threadB->priority);*/
+  return threadA->priority >= threadB->priority;
+}
+
+
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
