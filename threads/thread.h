@@ -106,6 +106,7 @@ struct thread
     int base_priority;
     struct list lock_list;
     bool donated;
+    struct thread *donated_thread;
     struct lock *blocking;
 
     int nice_val;

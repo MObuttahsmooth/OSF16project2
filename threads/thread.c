@@ -76,13 +76,10 @@ static tid_t allocate_tid (void);
 
 /* MY IMPLEMENTATION */
 static bool thread_sort_less(const struct list_elem *left, struct list_elem *right, void *aux);
-// static bool thread_insert_head(const struct list_elem *left, struct list_elem *right, void *aux);
-// static bool thread_insert_tail(const struct list_elem *left, struct list_elem *right, void *aux);
 
 static void thread_make_priority(struct thread *curr);
 static void thread_find_recent_cpu(struct thread *curr);
 
-// static int avg;
 /*END*/
 
 static bool thread_sort_less(const struct list_elem *left, struct list_elem *right, void *aux){
@@ -90,77 +87,6 @@ static bool thread_sort_less(const struct list_elem *left, struct list_elem *rig
   struct thread *t2 = list_entry(right, struct thread, elem);
   return(t1->priority > t2->priority);
 }
-// static bool thread_insert_head(const struct list_elem *left, struct list_elem *right, void *aux){
-//   struct thread *t1 = list_entry(left, struct thread, elem);
-//   struct thread *t2 = list_entry(right, struct thread, elem);
-//   return(t1->priority >= t2->priority);
-// }
-// static bool thread_insert_tail(const struct list_elem *left, struct list_elem *right, void *aux){
-//   return thread_sort_less(left, right, NULL);
-// }
-
-// int int_to_fixed(int d)
-// {
-//   return d * FP;
-// }
-
-// int fixed_to_int(int a)
-// {
-//   return a/FP;
-// }
-
-// int fixed_to_int_rounded(int a)
-// {
-//   if(a >= 0)
-//   {
-//     return(a + FP/2)/FP;
-//   }
-//   else
-//   {
-//     return(a - FP/2)/FP;
-//   }
-// }
-
-// // int add_fixed(int a, int b)
-// // {
-// //  return a + b;
-// // }
-
-// int add_mixed(int a, int d)
-// {
-//   return a + d * FP;
-//   // return a + int_to_fixed(d);
-// }
-
-// // int sub_fixed(int a, int b)
-// // {
-// //  return a - b;
-// // }
-
-// int sub_mixed(int a, int d)
-// {
-//   return a - d * FP;
-//   // return a - int_to_fixed(d);
-// }
-
-// int mult_fixed(int a, int b)
-// {
-//   return ((int64_t ) a) * b/FP;
-// }
-// // int mult_mixed(int a, int d)
-// // {
-// //  return a * d;
-// // }
-
-// int div_fixed(int a, int b)
-// {
-//   return ((int64_t) a) * FP/b;
-// }
-
-// // int div_mixed(int a, int d)
-// // {
-// //  return a / d;
-// // }
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -190,8 +116,6 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-
-  // avg = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -407,13 +331,15 @@ thread_yield (void)
 {
   struct thread *cur = thread_current ();
   enum intr_level old_level;
-  
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
+  if (cur != idle_thread){
+    // msg("Yielding right now.\n Priority is %d\n", cur->priority);
+ 
      // list_push_back (&ready_list, &cur->elem);
     list_insert_ordered(&ready_list, &cur->elem, thread_sort_less, NULL);
+  }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -754,7 +680,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->base_priority = priority;
   t->priority = priority;
   t->donated = false;
-
+  t->donated_thread = NULL;
   t->blocking = NULL;
   list_init(&t->lock_list);
   // if(thread_mlfqs){
