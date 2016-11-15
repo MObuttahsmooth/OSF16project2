@@ -752,13 +752,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
-  // t->priority = priority;
-  if(!thread_mlfqs)
-  {
-    t->base_priority = priority;
-    t->priority = priority;
-    t->donated = false;
-  }
+
+  t->base_priority = priority;
+  t->priority = priority;
+  t->donated = false;
+
   t->blocking = NULL;
   list_init(&t->lock_list);
   // if(thread_mlfqs){

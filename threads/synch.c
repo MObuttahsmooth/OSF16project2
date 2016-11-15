@@ -169,6 +169,13 @@ sema_test_helper (void *sema_)
     }
 }
 
+
+static bool lock_less(const struct list_elem *left, const struct list_elem *right, void* aux)
+{
+  struct lock *a = list_entry(left, struct lock, lock_list_elem);
+  struct lock *b = list_entry(right, struct lock, lock_list_elem);
+  return(a->lock_priority > b->lock_priority);
+}
 /* Initializes LOCK.  A lock can be held by at most a single
    thread at any given time.  Our locks are not "recursive", that
    is, it is an error for the thread currently holding a lock to
@@ -191,7 +198,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
-  lock->lock_priority = PRI_MIN - 1;
+  lock->lock_priority = PRI_MIN - 1;  // No threads at lock
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -209,8 +216,41 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  enum intr_level old_level = intr_disable();
+  struct thread *curr = thread_current();
+  struct thread *holder = lock->holder;
+  curr->blocking = lock;
+  struct lock *donate_lock = lock;
+
+  /* check if the thread holding the lock has a lower priority, 
+   * if it does then donate. Update the lock with the highest priority thread.
+   * If the thread holding the lock is blocked by another lock,
+   * then continue loop with that lock and donate priority to
+   * the new holding thread.*/
+  while(holder != NULL && holder->priority < curr->priority)
+  {
+    holder->donated = true;
+    thread_write_priority(holder, curr->priority, false);
+    if(donate_lock -> lock_priority < curr->priority){
+      donate_lock -> lock_priority = curr->priority;
+    }
+    if(holder->blocking != NULL && holder->status == THREAD_BLOCKED)
+    {
+      holder = holder->blocking->holder;
+      donate_lock = holder->blocking;
+      
+    }
+    else{
+      break;
+    }
+  }
   sema_down (&lock->semaphore);
-  lock->holder = thread_current ();
+  lock->holder = curr;
+  curr->blocking = NULL;
+  list_insert_ordered(&lock->holder->lock_list, &lock->lock_list_elem, lock_less, NULL);
+  intr_set_level(old_level);
+
+
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -228,8 +268,10 @@ lock_try_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
 
   success = sema_try_down (&lock->semaphore);
-  if (success)
+  if (success){
     lock->holder = thread_current ();
+    list_push_back(&lock->holder->lock_list, &lock->lock_list_elem);
+  }
   return success;
 }
 
@@ -241,11 +283,41 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock) 
 {
+  /* Remove the lock from lock_list. Loop
+   * through all the locks that the current thread
+   * has and reset it back to it's regular
+   * priority before donation.*/
+  struct thread *curr = thread_current();
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  enum intr_level old_level = intr_disable();
+
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+
+  lock->lock_priority = PRI_MIN - 1;
+  list_remove(&lock->lock_list_elem);
+
+  
+  if(!list_empty(&curr->lock_list))
+  {
+    struct list_elem *e = list_back(&curr->lock_list);
+    struct lock *held_lock = list_entry(e, struct lock, lock_list_elem);
+    if(held_lock->lock_priority != PRI_MIN - 1)
+    {
+      thread_write_priority(curr, held_lock->lock_priority, false);
+    }
+    else
+    {
+      thread_set_priority(curr->base_priority);
+    }
+  }
+  else{
+    curr->donated = false;
+    thread_set_priority(curr->base_priority);
+  }
+  intr_set_level(old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false

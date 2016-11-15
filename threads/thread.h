@@ -148,7 +148,7 @@ void thread_yield (void);
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
-void thread_yield_head(struct thread *cur);
+void thread_yield_head();
 void sort_threads(struct list *l);
 void thread_update_avg(void);
 void current_thread_update_recent_cpu(void);
