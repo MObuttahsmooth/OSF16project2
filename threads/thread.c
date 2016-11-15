@@ -221,9 +221,7 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
-  // if(thread_mlfqs){
-  //   thread_update_priority(t);
-  // }
+ 
   if(priority > thread_current()->priority){
     thread_yield();
     //yield head thread
@@ -335,30 +333,13 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread){
-    // msg("Yielding right now.\n Priority is %d\n", cur->priority);
- 
-     // list_push_back (&ready_list, &cur->elem);
+   
     list_insert_ordered(&ready_list, &cur->elem, thread_sort_less, NULL);
   }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
 }
-
-// void thread_yield_head(struct thread *cur){
-//   enum intr_level old_level;
-  
-//   ASSERT (!intr_context ());
-
-//   old_level = intr_disable ();
-//   if (cur != idle_thread) 
-//     // list_push_back (&ready_list, &cur->elem);
-//     list_insert_ordered(&ready_list, &cur->elem, thread_insert_tail, NULL);
-
-//   cur->status = THREAD_READY;
-//   schedule ();
-//   intr_set_level (old_level);
-// }
 
 /* Puts thread to sleep and schedules another thread */
 void
@@ -502,17 +483,6 @@ thread_get_load_avg (void)
   return 0;
 }
 
-// void thread_update_avg(void)
-// {
-//   int ready_thread_count = list_size(&ready_list);
-
-//   if(thread_current () != idle_thread){
-//     ready_thread_count += 1;
-//   }
-//   avg = mult_fixed(int_to_fixed(59 / 60), avg) + int_to_fixed(1)/60 * ready_thread_count; 
-//   // avg = FP_MUL (CONVERT_TO_FP(59) / 60, avg) + CONVERT_TO_FP(1)/60 * ready_thread_count;
-
-// }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
@@ -523,65 +493,7 @@ thread_get_recent_cpu (void)
   return 0;
 }
 
-// void current_thread_update_recent_cpu(void){
-//   thread_update_recent_cpu(thread_current());
-// }
 
-// void thread_update_recent_cpu(struct thread *curr)
-// {
-//   if(curr == idle_thread){
-//     return;
-//   }
-//   int load = 2 * avg;
-//   curr->recent_cpu = add_mixed(mult_fixed(div_fixed(load, add_mixed(load, 1)), curr->recent_cpu), curr->nice_val);
-//   // curr->recent_cpu = INT_ADD (FP_MUL (FP_DIV (load, INT_ADD (load, 1)), curr->recent_cpu), curr->nice_val);
-// }
-
-// void thread_update_all_recent_cpu(void)
-// {
-//   struct list_elem *e;
-//   struct thread *t;
-//   e = list_begin(&all_list);
-//   while(e != list_end(&all_list))
-//   {
-//     t = list_entry(e, struct thread, allelem);
-//     thread_update_recent_cpu(t);
-//     e = list_next(e);
-//   }
-// }
-
-// void thread_update_priority(struct thread *curr){
-//   if(curr == idle_thread){
-//     return;
-//   }
-//   curr->priority = 1;
-//   // curr->priority = PRI_MAX - CONVERT_TO_INT_NEAR(curr->recent_cpu / 4 - curr->nice_val * 2);
-//   curr->priority = PRI_MAX - fixed_to_int_rounded(curr->recent_cpu / 4 - curr->nice_val * 2);
-//   if(curr->priority > PRI_MAX){
-//     curr->priority - PRI_MAX;
-//   }
-//   else if(curr->priority < PRI_MIN){
-//     curr->priority = PRI_MIN;
-//   }
-// }
-
-// void current_thread_update_priority(){
-//   thread_update_priority(thread_current());
-// }
-
-// void thread_update_all_priority(){
-//   struct list_elem *e;
-//   struct thread *t;
-
-//   e = list_begin(&all_list);
-//   while(e != list_end(&all_list)){
-//     t = list_entry(e, struct thread, allelem);
-//     thread_update_priority(t);
-//     e = list_next(e);
-//   }
-//   sort_threads(&ready_list);
-
-// }
 
 void sort_threads(struct list *l)
 {
@@ -683,15 +595,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->donated_thread = NULL;
   t->blocking = NULL;
   list_init(&t->lock_list);
-  // if(thread_mlfqs){
-  //   t->nice_val = NICE_DEFAULT;
-  //   if(t == initial_thread){
-  //     t->recent_cpu = 0;
-  //   }
-  //   else{
-  //     t->recent_cpu = thread_get_recent_cpu();
-  //   }
-  // }
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
